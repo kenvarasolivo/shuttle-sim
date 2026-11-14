@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Compare rural scheduled buses and on-demand shuttles, with clear journey-time results and a report view."><title>Dorflinie Bus — Rural bus simulation</title><link rel="icon" href="bus.svg"><link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script></head>
 <body>
-<header class="topbar"><a class="brand" href="./" aria-label="Dorflinie Bus home"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="4" width="22" height="23" rx="5"/><path d="M5 16h22M10 10h12M10 22h2m8 0h2M9 27v2m14-2v2"/></svg>Dorflinie Bus<span>Bus simulation</span></a><button id="model-top" class="text-button">About the model ↗</button></header>
+<header class="topbar"><a class="brand" href="./" aria-label="Dorflinie Bus home"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="4" width="22" height="23" rx="5"/><path d="M5 16h22M10 10h12M10 22h2m8 0h2M9 27v2m14-2v2"/></svg>Dorflinie Bus<span>Rural mobility lab</span></a><button id="model-top" class="text-button">About the model ↗</button></header>
 <main>
-  <div class="heading-row"><div><h1>Rural bus simulation</h1><p>The same passengers. Two ways to connect the last mile.</p></div><div class="heading-actions"><button class="export" id="add-trip">+ Test a journey</button><button class="primary" id="report-mode" aria-pressed="false">Report view ↗</button></div></div>
+  <div class="heading-row"><div><h1>Shuttle simulation</h1><p>One rural network. The same passengers. Two ways to get there.</p></div><div class="heading-actions"><button class="export" id="add-trip">+ Test a journey</button><button class="export" id="report-mode" aria-pressed="false">Report view ↗</button></div></div>
   <section class="journey-highlight" id="journey-highlight" aria-labelledby="journey-title">
     <div class="highlight-heading"><h2 id="journey-title">Average total journey</h2><span id="headline-state">Live comparison</span></div>
     <p class="highlight-intro">Time from reaching the stop to arriving at the destination.</p>
@@ -40,14 +40,14 @@
   <div class="network-scope"><strong id="network-scope"></strong><span id="network-comparison"></span></div>
     <div class="comparison">
       <section class="scenario baseline" aria-labelledby="baseline-title">
-        <div class="scenario-heading"><div><span class="scenario-kicker">The usual connection</span><h2 id="baseline-title">Scheduled transport</h2></div><span class="system-type">Fixed routes</span></div>
+        <div class="scenario-heading"><svg class="vehicle-identity" viewBox="0 0 84 44" aria-hidden="true"><use href="vehicles.svg#scheduled"/></svg><div><h2 id="baseline-title">Scheduled transport</h2></div><span class="system-type">Fixed routes</span></div>
         <details class="dispatch-details"><summary>How it departs</summary><p class="dispatch-note" id="baseline-dispatch"></p></details>
         <div class="metric-strip" id="baseline-metrics"></div>
         <div class="map-wrap"><svg id="baseline-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="Scheduled bus map showing Hbf, City A, City B, City C, queues and moving buses"></svg><span class="map-note">Schematic network · not to geographic scale</span></div>
         <div class="scenario-footer"><span><i class="legend-bus baseline-dot"></i> Scheduled bus · 30 seats</span><span id="baseline-delivered">0 arrived at destination</span></div>
       </section>
       <section class="scenario shuttle" aria-labelledby="shuttle-title">
-        <div class="scenario-heading"><div><span class="scenario-kicker">A connection that adapts</span><h2 id="shuttle-title"><span class="dorflinie-bus-word">Dorflinie Bus</span></h2></div><span class="system-type green-type">On demand</span></div>
+        <div class="scenario-heading"><svg class="vehicle-identity" viewBox="0 0 84 44" aria-hidden="true"><use href="vehicles.svg#shuttle"/></svg><div><h2 id="shuttle-title"><span class="dorflinie-bus-word">Dorflinie Bus</span></h2></div><span class="system-type green-type">On demand</span></div>
         <details class="dispatch-details"><summary>How it departs</summary><p class="dispatch-note" id="shuttle-dispatch"></p></details>
         <div class="metric-strip" id="shuttle-metrics"></div>
         <div class="map-wrap"><svg id="shuttle-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="On-demand shuttle map showing queues, planned routes and moving vehicles"></svg><span class="map-note">Dashed routes = planned stops · numbers = riders</span></div>

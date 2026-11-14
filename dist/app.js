@@ -8,7 +8,23 @@ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const clock=t=>`${String(8+Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t)%60).padStart(2,'0')}`;
 const number=v=>v===null||v===undefined?'—':Math.round(v).toLocaleString();
 const minutes=v=>v===null||v===undefined?'—':`${Math.max(0,Math.round(v))} min`;
-const glyph=(x,y,color,label)=>`<g transform="translate(${x},${y})"><rect x="-17" y="-13" width="34" height="25" rx="6" fill="${color}" stroke="white" stroke-width="2.5"/><path d="M-11-6H-5M5-6H11" stroke="white" stroke-width="3"/><text text-anchor="middle" y="6" fill="white" font-size="12" font-weight="600">${label}</text><circle cx="-10" cy="14" r="3" fill="${color}"/><circle cx="10" cy="14" r="3" fill="${color}"/></g>`;
+// Side-elevation vehicles stay legible at map scale; occupancy is a separate badge.
+const glyph=(x,y,color,label,kind,reverse=false)=>{
+  const shuttle=kind==='shuttle',left=shuttle?-27:-35,width=shuttle?54:70;
+  return `<g transform="translate(${x},${y})"><g transform="scale(${reverse?-1:1},1)">
+    <path d="M${left+4} -15H${shuttle?12:22}Q${shuttle?19:29} -15 ${shuttle?23:33} -7L${left+width} 1V12H${left}V-10Q${left} -15 ${left+4} -15Z" fill="${color}" stroke="white" stroke-width="2"/>
+    <path d="M${left+4} 4H${left+width-3}" stroke="white" stroke-width="2" opacity=".75"/>
+    <rect x="${left+5}" y="-11" width="12" height="11" rx="1.5" fill="#dcece8"/>
+    <rect x="${left+20}" y="-11" width="12" height="11" rx="1.5" fill="#dcece8"/>
+    ${shuttle?'':`<rect x="${left+35}" y="-11" width="12" height="11" rx="1.5" fill="#dcece8"/>`}
+    <path d="M${shuttle?9:21} -11H${shuttle?13:23}L${shuttle?20:29} 0H${shuttle?9:21}Z" fill="#dcece8"/>
+    <path d="M${shuttle?7:19} -12V11" stroke="white" stroke-width="1"/>
+    <rect x="${left+width-4}" y="5" width="4" height="3" rx="1" fill="#dcece8"/>
+    <rect x="${left}" y="6" width="3" height="3" fill="#dcece8"/>
+    <circle cx="${left+12}" cy="12" r="6" fill="#263730" stroke="white" stroke-width="1.5"/><circle cx="${left+12}" cy="12" r="2.5" fill="#acb9b1"/>
+    <circle cx="${left+width-12}" cy="12" r="6" fill="#263730" stroke="white" stroke-width="1.5"/><circle cx="${left+width-12}" cy="12" r="2.5" fill="#acb9b1"/>
+    </g><rect x="-12" y="-37" width="24" height="19" rx="5" fill="white" stroke="${color}" stroke-width="1.5"/><text text-anchor="middle" y="-23" fill="${color}" font-size="14" font-weight="600">${label}</text></g>`;
+};
 function curve(a,b){const p=nodes[a],q=nodes[b];return {p,q,cx:(p.x+q.x)/2,cy:(p.y+q.y)/2+(Math.min(a,b)%2? -20:28)};}
 function road(a,b){const {p,q,cx,cy}=curve(a,b);return `M${p.x},${p.y}Q${cx},${cy} ${q.x},${q.y}`;}
 function point(a,b,f){if(a===b)return nodes[a];const {p,q,cx,cy}=curve(a,b),u=1-f;return {x:u*u*p.x+2*u*f*cx+f*f*q.x,y:u*u*p.y+2*u*f*cy+f*f*q.y};}
@@ -18,7 +34,7 @@ function vehiclePosition(v,kind){
   const p=point(v.from,v.to,progress);
   // A small, stable lane offset keeps vehicles apart without a sideways jump at stops.
   const ordinal=kind==='shuttle'?Number(v.id):Number(String(v.id).split('-')[0]);
-  return `translate(${(p.x+((ordinal-1)%3-1)*8).toFixed(2)},${(p.y-23).toFixed(2)})`;
+  return `translate(${(p.x+((ordinal-1)%3-1)*25).toFixed(2)},${(p.y-25-Math.floor((ordinal-1)/3)*22).toFixed(2)})`;
 }
 function animateVehicles(){
   for(const kind of ['baseline','shuttle']) for(const marker of vehicleMarkers[kind]) {
@@ -48,7 +64,7 @@ function renderMap(kind,t) {
     for(let k=0;k<dots;k++)html+=`<circle cx="${n.x-24+(k%5)*10}" cy="${n.y+105+Math.floor(k/5)*10}" r="2.5" fill="${color}" opacity=".7"/>`;
   }
   s.vehicles.forEach(v=>{
-    html+=`<g data-vehicle="${v.id}" transform="${vehiclePosition(v,kind)}"><title>${kind==='shuttle'?'Shuttle':'Bus'} ${v.id}: ${v.load}/${v.capacity} riders${v.route.length?`, next ${nodes[v.route[0].node].short}`:''}</title>${glyph(0,0,color,v.load)}</g>`;
+    html+=`<g data-vehicle="${v.id}" transform="${vehiclePosition(v,kind)}"><title>${kind==='shuttle'?'Shuttle':'Bus'} ${v.id}: ${v.load}/${v.capacity} riders${v.route.length?`, next ${nodes[v.route[0].node].short}`:''}</title>${glyph(0,0,color,v.load,kind,nodes[v.to].x<nodes[v.from].x)}</g>`;
   });
   $(kind+'-map').innerHTML=html;
   const elements=[...$(kind+'-map').querySelectorAll('[data-vehicle]')];
@@ -106,7 +122,7 @@ function renderPassengers(t){
   $('passengers').innerHTML=visible.length?visible.map(p=>{
     const a=run.baseline.passengers[p.id-1],b=run.shuttle.passengers[p.id-1],status=state(b,t),eta=run.shuttle.history[t].estimates[p.id]?.dropoff;
     const late=(eta!==undefined&&eta>p.deadline)||(t>p.deadline&&status!=='Done');
-    return `<tr><td>#${String(p.id).padStart(3,'0')}</td><td>${nodes[p.origin].short==='Hbf'?'Hbf':nodes[p.origin].name}<span class="route-arrow">→</span>${nodes[p.destination].short==='Hbf'?'Hbf':nodes[p.destination].name}</td><td>${clock(p.arrival)} <span class="minor">/ ${clock(p.deadline)}</span></td><td>${tripEstimate(a,'baseline',t)}</td><td>${tripEstimate(b,'shuttle',t)}</td><td><span class="status ${late?'late':status==='Riding'?'riding':''}">${status}${late?status==='Done'?' · late':' · at risk':''}</span></td></tr>`;
+    return `<tr><td>#${String(p.id).padStart(3,'0')}</td><td>${nodes[p.origin].short==='Hbf'?'Hbf':nodes[p.origin].name}<span class="route-arrow">→</span>${nodes[p.destination].short==='Hbf'?'Hbf':nodes[p.destination].name}</td><td>${clock(p.arrival)} <span class="minor">/ ${clock(p.deadline)}</span></td><td data-label="Scheduled wait / total">${tripEstimate(a,'baseline',t)}</td><td data-label="Shuttle wait / total">${tripEstimate(b,'shuttle',t)}</td><td><span class="status ${late?'late':status==='Riding'?'riding':''}">${status}${late?status==='Done'?' · late':' · at risk':''}</span></td></tr>`;
   }).join(''):`<tr><td class="empty-cell" colspan="6">${t===0?'Waiting for the first passengers. Press play to begin.':'No journeys match this view.'}</td></tr>`;
   $('table-count').textContent=rows.length?`${page*pageSize+1}–${Math.min((page+1)*pageSize,rows.length)} of ${rows.length} passengers`:'No matching arrivals';
   $('page-label').textContent=`${page+1} / ${pages}`;$('previous').disabled=page===0;$('next').disabled=page>=pages-1;

@@ -67,4 +67,6 @@ Tests cover determinism, shared demand, passenger conservation, capacity, zero d
 
 ## Visual direction
 
-Framed sheet, seed 1208793503, with a rural green-grey frame and a paired transport-network schematic as the signature element. IBM Plex Sans is bundled under the SIL Open Font License in `dist/FONT-LICENSE.txt`. All map artwork is drawn in the project; there are no external photographs or tracking requests. Passenger demand, all roads and all schedules are synthetic and are defined in `dist/simulation.js`.
+Framed sheet, seed 648438311, with a rural green-grey frame and a paired transport-network schematic as the signature element. IBM Plex Sans is bundled under the SIL Open Font License in `dist/FONT-LICENSE.txt`. All map artwork is drawn in the project; there are no external photographs or tracking requests. Passenger demand, all roads and all schedules are synthetic and are defined in `dist/simulation.js`.
+
+The refreshed UI uses a compact outcome strip, larger paired maps, original side-elevation vehicle SVGs, and passenger comparison rows on phones. See [UI review and verification](docs/ui-review.md).
