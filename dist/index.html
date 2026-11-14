@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Explore the rural last mile. Compare the same passengers on scheduled buses and deadline-aware, on-demand shuttles.">
+  <title>Landlink — Rural mobility lab</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 26V14Q5 5 14 5h13M12 27V15q0-3 3-3h12' fill='none' stroke='%232c7052' stroke-width='4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Landlink home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27V14Q5 5 14 5h13M13 27V16q0-3 3-3h11"/></svg>landlink<span>Rural mobility lab</span></a>
+    <div class="topright"><span class="prototype"><i></i> Interactive concept</span><button id="model-top" class="text-button">About the model <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <aside class="sidebar" aria-label="Simulation settings">
+    <div class="nav-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15V9m7 6V4m7 11V7"/></svg>Simulation <span>Live</span></div>
+    <button id="mobile-settings" class="text-button" aria-expanded="false">More settings ↓</button>
+    <div class="settings-heading"><h2>Set the scene</h2><button id="restore" class="text-button">Reset</button></div>
+    <p class="side-copy">A station. Three villages.<br>One better way to connect them.</p>
+    <form id="settings">
+      <label class="field">Passenger arrivals<select name="pattern"><option value="steady">Everyday demand</option><option value="waves">Train arrival waves</option></select></label>
+      <label class="field">Passengers / hour <output id="demand-value">24</output><input name="demand" type="range" min="0" max="180" step="6" value="24"><span class="range-ends"><span>Quiet · 0</span><span>Busy · 180</span></span></label>
+      <div class="settings-section"><h3>Scheduled transport</h3><span class="tiny-line grey"></span></div>
+      <label class="field">Bus frequency <output id="headway-value">60 min</output><input name="headway" type="range" min="30" max="120" step="15" value="60"><span class="range-ends"><span>Every 30 min</span><span>120 min</span></span></label>
+      <div class="settings-section"><h3>Landlink fleet</h3><span class="tiny-line green"></span></div>
+      <div class="field-pair"><label class="field">Shuttles<select name="fleet"><option value="0">0 shuttles</option><option value="1">1 shuttle</option><option value="2">2 shuttles</option><option selected value="3">3 shuttles</option><option value="4">4 shuttles</option><option value="5">5 shuttles</option><option value="6">6 shuttles</option></select></label><label class="field">Seats each<select name="capacity"><option value="4">4 seats</option><option selected value="8">8 seats</option><option value="12">12 seats</option><option value="16">16 seats</option></select></label></div>
+      <label class="field">Arrival flexibility <output id="slack-value">25 min</output><input name="slack" type="range" min="5" max="60" step="5" value="25"><span class="range-ends"><span>Tight · 5 min</span><span>60 min</span></span></label>
+      <p class="field-help">Deadline = direct drive + flexibility + 0–10 min.</p>
+      <label class="field">Simulation length<select name="duration"><option value="60">1 hour · 08:00–09:00</option><option selected value="180">3 hours · 08:00–11:00</option><option value="360">6 hours · 08:00–14:00</option></select></label>
+      <label class="field seed-field">Random seed <input name="seed" type="number" min="1" max="999999" value="42" required><button id="new-seed" type="button" aria-label="Choose a new random seed" title="Choose a new random seed">↻</button></label>
+      <button class="primary apply" type="submit">Apply & restart <span aria-hidden="true">↗</span></button>
+      <p id="settings-status" role="status" class="field-help">Both scenarios use identical arrivals.</p>
+    </form>
+    <div class="sidebar-bottom"><span class="small-mark">L↗</span><p>Good connections.<br>Beyond the city.</p></div>
+  </aside>
+  <main>
+    <div class="heading-row"><div><div class="breadcrumb">Mobility lab <span>/</span> Rural last mile</div><h1>Same passengers. Two ways home.</h1><p>Explore what changes when the bus comes to you.</p></div><div class="heading-actions"><button class="export" id="add-trip">+ <span>Test a journey</span></button><button class="export" id="export">↓ <span>Export trips</span></button></div></div>
+    <section class="transport" aria-label="Simulation playback">
+      <button id="play" class="primary play"><span aria-hidden="true">Ⅱ</span> Pause</button>
+      <div class="clock"><strong id="clock">08:00</strong><span id="elapsed">0 of 180 min</span></div>
+      <div class="scrubber"><input id="timeline" aria-label="Simulation time" type="range" min="0" max="180" value="0"><div class="timeline-labels"><span>08:00</span><span id="end-time">11:00</span></div></div>
+      <label class="speed-label">Speed<select id="speed" aria-label="Playback speed"><option value="1">1×</option><option selected value="3">3×</option><option value="10">10×</option></select></label>
+      <button class="icon-button" id="restart" aria-label="Restart playback" title="Restart playback">↻</button>
+    </section>
+    <div class="run-summary"><span><i class="live-dot"></i><strong id="arrival-count">0</strong> passengers arrived <span class="summary-divider">·</span> <span id="scenario-name">Everyday demand</span></span><span id="finding">Waiting for the first shared trips to finish.</span></div>
+    <div class="comparison">
+      <section class="scenario baseline" aria-labelledby="baseline-title">
+        <div class="scenario-heading"><div><span class="scenario-kicker">The usual connection</span><h2 id="baseline-title">Scheduled transport</h2></div><span class="system-type">Fixed routes</span></div>
+        <div class="metric-strip" id="baseline-metrics"></div>
+        <div class="map-wrap"><svg id="baseline-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="Scheduled bus map showing Hbf, City A, City B, City C, queues and moving buses"></svg><span class="map-note">Schematic network · not to geographic scale</span></div>
+        <div class="scenario-footer"><span><i class="legend-bus baseline-dot"></i> Scheduled bus · 30 seats</span><span id="baseline-delivered">0 arrived at destination</span></div>
+      </section>
+      <section class="scenario shuttle" aria-labelledby="shuttle-title">
+        <div class="scenario-heading"><div><span class="scenario-kicker">A connection that adapts</span><h2 id="shuttle-title"><span class="landlink-word">Landlink</span> shuttle</h2></div><span class="system-type green-type">On demand</span></div>
+        <div class="metric-strip" id="shuttle-metrics"></div>
+        <div class="map-wrap"><svg id="shuttle-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="On-demand shuttle map showing queues, planned routes and moving vehicles"></svg><span class="map-note">Dashed routes = planned stops · numbers = riders</span></div>
+        <div class="scenario-footer"><span><i class="legend-bus shuttle-dot"></i> <span id="fleet-label">3 shuttles · 8 seats each</span></span><span id="shuttle-delivered">0 arrived at destination</span></div>
+      </section>
+    </div>
+    <div class="lower-grid">
+      <section class="queue-panel panel" aria-labelledby="queue-title"><div class="panel-heading"><div><h2 id="queue-title">At the stops</h2><p>Waiting now / estimated time to destination</p></div><button id="clear-stop" class="text-button" hidden>Clear filter</button></div><div id="queues"></div><div class="panel-foot">Click a stop to inspect its passengers. ETA includes wait + ride.</div></section>
+      <section class="trend-panel panel" aria-labelledby="trend-title"><div class="panel-heading"><div><h2 id="trend-title">The waiting gap</h2><p>Passengers waiting across all four stops</p></div><div class="chart-legend"><span><i class="grey"></i>Scheduled</span><span><i class="green"></i>Landlink</span></div></div><svg id="trend" viewBox="0 0 600 168" role="img" aria-label="Line chart comparing the number of passengers waiting over time"></svg><div class="panel-foot" id="paired-note">Journey savings compare only passengers who finished in both scenarios.</div></section>
+    </div>
+    <section class="passenger-panel panel" aria-labelledby="passenger-title"><div class="panel-heading"><div><h2 id="passenger-title">Every journey, side by side</h2><p id="passenger-caption">Live estimates for the same people in both scenarios.</p></div><label class="table-filter">Show<select id="passenger-filter" aria-label="Filter passengers"><option value="active">Active journeys</option><option value="all">All arrivals</option><option value="late">At risk / late</option><option value="completed">Completed in both</option></select></label></div><div class="table-scroll"><table><thead><tr><th>Passenger</th><th>Journey</th><th>Arrived / due</th><th>Scheduled · wait / total</th><th>Landlink · wait / total</th><th>Landlink status</th></tr></thead><tbody id="passengers"></tbody></table></div><div class="table-bottom"><span id="table-count">No arrivals yet</span><div><button id="previous" class="icon-button" aria-label="Previous passengers">←</button><span id="page-label">1 / 1</span><button id="next" class="icon-button" aria-label="Next passengers">→</button></div></div></section>
+    <footer class="main-footer"><p>A model for exploring possibilities. Synthetic demand, distances and timetables.</p><button id="model-bottom" class="text-button">Assumptions & routing logic ↗</button></footer>
+  </main>
+  <dialog id="model-dialog"><div class="dialog-heading"><h2>Inside the simulation</h2><button id="close-model" class="icon-button" aria-label="Close model explanation">×</button></div><div class="dialog-content"><p>Landlink explores pooled, on-demand rural transport: book a destination and an arrival deadline, then share a shuttle with compatible journeys.</p><h3>A fair passenger comparison</h3><p>Both systems receive the exact same seeded Poisson arrival stream. 60% of origins are Hbf; village departures mainly go to Hbf, with some trips between villages. Train-wave mode concentrates demand into five minutes every half hour. No future passenger requests are revealed to the shuttle planner.</p><h3>Scheduled buses</h3><p>Three radial services connect Hbf to A, B and C. Outbound departures are staggered by a third of the selected headway. Buses return after the outbound drive and one minute at the village. Each departure has 30 seats; overflow waits for the next departure. Village-to-village passengers transfer at Hbf with a minimum two-minute connection. The timetable may require overlapping vehicles at shorter headways.</p><h3>Deadline-aware shuttle insertion</h3><p>Every minute, unassigned requests are ordered by deadline and waiting age. For each vehicle, the planner tries pickup and dropoff insertions while keeping existing stop order, respecting seat capacity on every leg and preserving a moving vehicle’s next stop. It chooses the smallest incremental route cost: route duration + 0.25 × total journey minutes + 20 × late minutes. Every stop takes one minute. Routes are limited to 20 stops to keep planning responsive. This is an insertion heuristic; it does not guarantee optimal routes or on-time arrival. Pending requests are retried each minute.</p><h3>What the figures mean</h3><p>All road speeds are 35 km/h, with drive times rounded up to full minutes. Synthetic direct roads: Hbf–A 8 km, Hbf–B 12 km, Hbf–C 10 km, A–B 7 km, B–C 8 km, A–C 14 km. The map is a schematic, not real geography.</p><p>Average wait, journey time and on-time rate include only completed journeys in that scenario. The saving at the top uses only the <em>same passengers completed in both</em> by the current time. Queued and onboard riders stay visible and are not counted as completed. An ETA comes from the current route plan; it can change with new requests. Unassigned riders show “Unassigned” rather than an invented ETA. Timetable wait includes transfer wait; shuttle wait is time before pickup.</p><h3>Limits & next steps</h3><p>This is a concept model, not a transport service or a validated operational forecast. Fleet resources differ: three scheduled lines versus the chosen number of shuttles. There is no equal-cost or emissions claim. Walking, traffic, wheelchair boarding, driver breaks, cancellations and operating costs are excluded. Real testing needs local timetable, road and demand data. FlixBus-style booking and parcel-style pooling are inspirations; there is no affiliation with FlixBus or Amazon.</p></div></dialog>
+  <dialog id="trip-dialog"><div class="dialog-heading"><h2>Test your own connection</h2><button id="close-trip" class="icon-button" aria-label="Close test journey">×</button></div><form id="trip-form" class="dialog-content"><p>Add one passenger to both scenarios. Give them a destination and a time they need to arrive.</p><div class="booking-fields"><label class="field">From<select name="origin"><option value="0">Hbf · Main station</option><option value="1">City A</option><option value="2">City B</option><option value="3">City C</option></select></label><label class="field">To<select name="destination"><option value="1">City A</option><option value="2">City B</option><option value="3">City C</option><option value="0">Hbf · Main station</option></select></label><label class="field">At the stop at<input name="arrival" type="time" min="08:00" value="09:00" required></label><label class="field">Arrive by<input name="deadline" type="time" min="08:00" value="09:40" required></label></div><p id="trip-error" role="status"></p><button type="submit" class="primary booking-submit">Add to both scenarios ↗</button><p class="booking-note">The simulation pauses at your arrival so you can follow the trip. Very tight deadlines may be missed.</p></form></dialog>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>
