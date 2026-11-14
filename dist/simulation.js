@@ -169,7 +169,7 @@ function shuttles(demand,c) {
 export function simulate(options={},customDemand=null) {
   const c={...defaults,...options};
   for(const key of ['duration','demand','fleet','capacity','headway','busCapacity','speed','slack','seed']) if(!Number.isFinite(c[key])) throw new Error(`${key} must be finite`);
-  if(c.duration<1||c.duration>360||c.demand<0||c.demand>240||c.fleet<0||c.fleet>8||c.capacity<1||c.headway<1||c.busCapacity<1||c.speed<1||c.slack<0) throw new Error('Configuration outside supported range');
+  if(c.duration<1||c.duration>360||c.demand<0||c.demand>240||c.fleet<0||c.fleet>10||c.capacity<1||c.headway<1||c.busCapacity<1||c.speed<1||c.slack<0) throw new Error('Configuration outside supported range');
   for(const key of ['duration','fleet','capacity','busCapacity']) if(!Number.isInteger(c[key])) throw new Error(`${key} must be an integer`);
   c.network=createNetwork(c.cityCount);
   const demand=customDemand?customDemand.map(p=>({...p})):generateDemand(c);
@@ -184,7 +184,10 @@ export function summarize(system,time) {
 }
 export function pairedSavings(run,time) {
   const pairs=run.demand.map((p,i)=>[run.baseline.passengers[i],run.shuttle.passengers[i]]).filter(([a,b])=>a.dropoff!==null&&b.dropoff!==null&&a.dropoff<=time&&b.dropoff<=time);
-  return {count:pairs.length,minutes:mean(pairs.map(([a,b])=>(a.dropoff-a.arrival)-(b.dropoff-b.arrival)))};
+  const baselineAverage=mean(pairs.map(([a])=>a.dropoff-a.arrival));
+  const shuttleAverage=mean(pairs.map(([,b])=>b.dropoff-b.arrival));
+  const minutes=mean(pairs.map(([a,b])=>(a.dropoff-a.arrival)-(b.dropoff-b.arrival)));
+  return {count:pairs.length,minutes,baselineAverage,shuttleAverage,percent:baselineAverage?minutes/baselineAverage*100:null};
 }
 // A ride leg is one actual vehicle departure between two different stops.
 // Count empty legs too; a multi-stop shuttle tour consists of several legs.
