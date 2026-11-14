@@ -1,5 +1,13 @@
 # Verification — Landlink
 
+## End-of-run overview update
+
+The summary extension was specified by three additional tests before implementation. `npm test` first failed because `resultStats` was not exported; checkpoint `85cb7c9` preserves that RED specification. After implementing the aggregation, **13/13 tests pass**, with **98.43% engine line coverage and 99.49% branch coverage**. The new tests prove waiting + onboard = journey time for completed travelers including scheduled transfers, each departed leg is counted once, empty legs are included, future timetable legs are excluded, seat utilization uses actual driving time, and unfinished passengers and null averages remain visible.
+
+The browser check now reports **23 passing checks**, including automatically revealed final results, all 13 summary rows, clearing stale results after restart, Run to end, dispatch explanations and the 17-line summary CSV with definitions. No JavaScript exceptions or horizontal page overflow occurred. Final result screenshots were reviewed at desktop and mobile sizes; the mobile summary was changed to fit both scenario columns at once. The normal view inspector reports 0 failures and 0 warnings at 1440/768/390px. Existing style and synthetic-data limits remain as described below. A 100px tablet dispatch-description area keeps the paired scenario metrics and maps aligned.
+
+Default seed-42/three-hour result: scheduled/shuttle average wait 30.76/16.66 min, onboard 19.15/22.31 min, total journey 49.91/38.97 min. These scenario averages have different completed cohorts (34/35); matched saving is separately calculated for the 28 passengers completed in both. No dispatch policy was changed: shuttles still react immediately to assigned requests, without a departure timetable or minimum load.
+
 User journeys were derived from the request: compare rural transport with the same random passengers; observe queues, total journey times and arrival deadlines; explore an on-demand shuttle algorithm interactively; preserve the earlier app.
 
 ## Simulation evidence

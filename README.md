@@ -21,6 +21,11 @@ Open http://localhost:5173. `PORT` overrides the local server port. Deployment u
 - **Test a journey** adds a passenger with a chosen origin, destination, stop-arrival time and arrival deadline to both systems. Playback pauses at that passenger's arrival. Stop selection filters origins, not destinations.
 - Click a map stop or queue row to filter the passenger list. The list also supports active, completed and at-risk trips and pagination.
 - **Export trips** downloads the full run, including trips not completed inside the horizon. All times in the CSV are minutes after 08:00. It is not a current-time snapshot. Baseline bookings beyond the horizon remain forecasts and are flagged as not completed.
+- **Run to end** jumps to the final comparison. The overview also appears automatically at the end and includes average wait, onboard and total journey time, 90th-percentile wait, passengers per ride leg, seat utilization, empty departures, on-time rate, completed journeys, remaining riders and peak queue. **Download summary** exports values and their definitions.
+
+Scheduled buses leave on their timetable, including empty departures. On-demand shuttles have no departure clock, batching window or minimum passenger load: they leave for an assigned request as soon as available, spend a minute on each pickup/dropoff, and continue along their planned stops. A single passenger can trigger departure. Idle shuttles remain where their last request ended. Deadlines influence the chosen route; they do not set a scheduled departure time.
+
+In the summary, a ride leg is a vehicle departure between two different stops. Average passengers per leg is the mean load at departure, including empty trips and legs still underway at the cutoff. Seat utilization is passenger-minutes / available seat-minutes while actually driving, clipped to the simulation window. Neither is the number of unique customers served by a whole multi-stop shuttle tour. Waiting + onboard time = total journey time for the completed cohort; scheduled transfer waits are included in waiting.
 
 ## Model
 
