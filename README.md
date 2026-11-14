@@ -16,6 +16,7 @@ Open http://localhost:5173. `PORT` overrides the local server port. Deployment u
 ## Explore
 
 - The opening preview begins at 08:45. Restart returns to 08:00. Pause, scrub, and choose 1×, 3× or 10× playback.
+- Vehicles move continuously along the map's road curves between minute snapshots. Only marker transforms update each animation frame; routing, boarding and passenger statistics keep their one-minute simulation steps. Pause and scrubbing preserve exact positions. Reduced-motion mode keeps positions on minute snapshots.
 - Change demand, train waves, timetable frequency, fleet size, seats, flexibility, horizon or random seed, then select **Apply & restart**. Applying or resetting clears manually added journeys.
 - On smaller screens, **More settings** reveals all scenario controls.
 - **Test a journey** adds a passenger with a chosen origin, destination, stop-arrival time and arrival deadline to both systems. Playback pauses at that passenger's arrival. Stop selection filters origins, not destinations.

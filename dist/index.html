@@ -39,7 +39,7 @@
     <section class="transport" aria-label="Simulation playback">
       <button id="play" class="primary play"><span aria-hidden="true">Ⅱ</span> Pause</button>
       <div class="clock"><strong id="clock">08:00</strong><span id="elapsed">0 of 180 min</span></div>
-      <div class="scrubber"><input id="timeline" aria-label="Simulation time" type="range" min="0" max="180" value="0"><div class="timeline-labels"><span>08:00</span><span id="end-time">11:00</span></div></div>
+      <div class="scrubber"><input id="timeline" aria-label="Simulation time" type="range" min="0" max="180" step="0.01" value="0"><div class="timeline-labels"><span>08:00</span><span id="end-time">11:00</span></div></div>
       <label class="speed-label">Speed<select id="speed" aria-label="Playback speed"><option value="1">1×</option><option selected value="3">3×</option><option value="10">10×</option></select></label>
       <button class="icon-button" id="restart" aria-label="Restart playback" title="Restart playback">↻</button>
       <button class="export" id="run-to-end">Run to end</button>

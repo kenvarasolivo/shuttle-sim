@@ -2,6 +2,8 @@ import {nodes,defaults,simulate,summarize,pairedSavings,generateDemand,travelTim
 const $=id=>document.getElementById(id);
 let config={...defaults},run,time=45,playing=true,last=0,selectedStop=null,page=0,toastTimer,manualTrips=[];
 const pageSize=6;
+const vehicleMarkers={baseline:[],shuttle:[]};
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const clock=t=>`${String(8+Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t)%60).padStart(2,'0')}`;
 const number=v=>v===null||v===undefined?'—':Math.round(v).toLocaleString();
 const minutes=v=>v===null||v===undefined?'—':`${Math.max(0,Math.round(v))} min`;
@@ -9,6 +11,20 @@ const glyph=(x,y,color,label)=>`<g transform="translate(${x},${y})"><rect x="-17
 function curve(a,b){const p=nodes[a],q=nodes[b];return {p,q,cx:(p.x+q.x)/2,cy:(p.y+q.y)/2+(Math.min(a,b)%2? -20:28)};}
 function road(a,b){const {p,q,cx,cy}=curve(a,b);return `M${p.x},${p.y}Q${cx},${cy} ${q.x},${q.y}`;}
 function point(a,b,f){if(a===b)return nodes[a];const {p,q,cx,cy}=curve(a,b),u=1-f;return {x:u*u*p.x+2*u*f*cx+f*f*q.x,y:u*u*p.y+2*u*f*cy+f*f*q.y};}
+function vehiclePosition(v,kind){
+  const sampleTime=reducedMotion.matches?Math.floor(time):time;
+  const progress=v.moving?Math.max(0,Math.min(1,(sampleTime-v.moving.start)/(v.moving.end-v.moving.start))):0;
+  const p=point(v.from,v.to,progress);
+  // A small, stable lane offset keeps vehicles apart without a sideways jump at stops.
+  const ordinal=kind==='shuttle'?Number(v.id):Number(String(v.id).split('-')[0]);
+  return `translate(${(p.x+((ordinal-1)%3-1)*8).toFixed(2)},${(p.y-23).toFixed(2)})`;
+}
+function animateVehicles(){
+  for(const kind of ['baseline','shuttle']) for(const marker of vehicleMarkers[kind]) {
+    const transform=vehiclePosition(marker.vehicle,kind);
+    if(marker.transform!==transform){marker.element.setAttribute('transform',transform);marker.transform=transform;}
+  }
+}
 const landscape=`<rect width="800" height="550" fill="#f2f5ee"/><path d="M0 30L185 0l40 104-136 74L0 134Z M546 0h254v112l-105 44-108-56Z M0 415l148-37 97 172H0Z M555 390l245-37v197H636Z" fill="#e8eedf"/><path d="M288 0q-62 110-8 184t8 161 39 205" fill="none" stroke="#dce9e7" stroke-width="16"/><path d="M0 215l800 315M0 210L800 525" fill="none" stroke="#e8ecdf" stroke-width="2"/><path d="M610 0L800 178M585 0L800 200M0 500l178-22M0 518l185-23" stroke="#dce5d2" stroke-width="2"/><g fill="#dde7d3">${[[53,55],[76,71],[46,85],[96,38],[720,475],[747,461],[754,496],[692,499],[72,417],[90,440],[115,408],[690,48],[713,66],[733,40]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="13"/><circle cx="${x-9}" cy="${y+8}" r="9"/>`).join('')}</g><g fill="#e4e8df">${[[377,102],[394,89],[453,111],[473,127],[651,229],[674,235],[696,269],[645,296],[401,432],[414,470],[461,477],[480,449],[103,223],[126,226],[165,233]].map(([x,y])=>`<rect x="${x}" y="${y}" width="15" height="11" rx="2"/>`).join('')}</g><text x="39" y="343" fill="#7c8a72" font-size="11">Rural district</text>`;
 function renderMap(kind,t) {
   const s=run[kind].history[t],color=kind==='shuttle'?'#2c7052':'#77818a';
@@ -29,14 +45,12 @@ function renderMap(kind,t) {
     const dots=Math.min(count,15);
     for(let k=0;k<dots;k++)html+=`<circle cx="${n.x-24+(k%5)*10}" cy="${n.y+105+Math.floor(k/5)*10}" r="2.5" fill="${color}" opacity=".7"/>`;
   }
-  s.vehicles.forEach((v,i)=>{
-    const fractional=v.moving?Math.max(0,Math.min(1,(time-v.moving.start)/(v.moving.end-v.moving.start))):0;
-    const p=point(v.from,v.to,fractional);
-    // Parked vehicles fan out so every vehicle remains inspectable at the hub.
-    const offset=!v.moving?(i%3-1)*33:0;
-    html+=`<g><title>${kind==='shuttle'?'Shuttle':'Bus'} ${v.id}: ${v.load}/${v.capacity} riders${v.route.length?`, next ${nodes[v.route[0].node].short}`:''}</title>${glyph(p.x+offset,p.y-23,color,v.load)}</g>`;
+  s.vehicles.forEach(v=>{
+    html+=`<g data-vehicle="${v.id}" transform="${vehiclePosition(v,kind)}"><title>${kind==='shuttle'?'Shuttle':'Bus'} ${v.id}: ${v.load}/${v.capacity} riders${v.route.length?`, next ${nodes[v.route[0].node].short}`:''}</title>${glyph(0,0,color,v.load)}</g>`;
   });
   $(kind+'-map').innerHTML=html;
+  const elements=[...$(kind+'-map').querySelectorAll('[data-vehicle]')];
+  vehicleMarkers[kind]=s.vehicles.map((vehicle,i)=>({vehicle,element:elements[i],transform:elements[i].getAttribute('transform')}));
 }
 function metrics(kind,s) {
   $(kind+'-metrics').innerHTML=[['Waiting now',s.waiting,'people','Across all stops'],['Avg. journey',s.averageJourney,'min',`${s.delivered} completed trips`],['On time',s.onTime,'%',s.delivered?'Of completed trips':'No completed trips yet']].map(([label,value,unit,sub])=>`<div><span class="metric-label">${label}</span><span class="metric-value">${number(value)} <small>${unit}</small></span><span class="metric-sub">${sub}</span></div>`).join('');
@@ -128,8 +142,9 @@ function renderResults(t){
 }
 function render(force=false){
   const t=Math.min(config.duration,Math.floor(time));
-  $('clock').textContent=clock(t);$('elapsed').textContent=`${t} of ${config.duration} min`;$('timeline').value=time;
-  if(!force&&t===lastRendered)return;
+  $('timeline').value=time;
+  if(!force&&t===lastRendered){animateVehicles();return;}
+  $('clock').textContent=clock(t);$('elapsed').textContent=`${t} of ${config.duration} min`;
   lastRendered=t;
   const a=summarize(run.baseline,t),b=summarize(run.shuttle,t),saving=pairedSavings(run,t);
   metrics('baseline',a);metrics('shuttle',b);renderMap('baseline',t);renderMap('shuttle',t);renderQueues(t);renderTrend(t);renderPassengers(t);renderResults(t);

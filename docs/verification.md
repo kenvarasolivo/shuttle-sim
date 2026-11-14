@@ -1,5 +1,11 @@
 # Verification — Landlink
 
+## Smooth vehicle animation
+
+The browser reproducer `.taste-skill/motion-check.mjs` first failed with “Vehicle does not move between minute snapshots.” The clock already advanced on animation frames, but the render function returned before updating vehicle positions between integer minutes. Markers now interpolate from departure to arrival along the same quadratic curve used by the road, with cached SVG references and transform updates only. A stable per-vehicle lane offset removes the previous sideways jump between parked and moving positions. The timeline now accepts fractional minutes.
+
+The motion reproducer passes: inside minute 25 a scheduled marker moved from `translate(268.81,253.35)` to `translate(275.41,253.78)` while playback advanced to 25.27, and remained fixed while paused. Reduced-motion mode is checked separately. The existing 23 interaction checks and 13 engine tests pass. This is a presentation change; dispatch rules, passenger streams and final simulation outcomes are unchanged.
+
 ## End-of-run overview update
 
 The summary extension was specified by three additional tests before implementation. `npm test` first failed because `resultStats` was not exported; checkpoint `85cb7c9` preserves that RED specification. After implementing the aggregation, **13/13 tests pass**, with **98.43% engine line coverage and 99.49% branch coverage**. The new tests prove waiting + onboard = journey time for completed travelers including scheduled transfers, each departed leg is counted once, empty legs are included, future timetable legs are excluded, seat utilization uses actual driving time, and unfinished passengers and null averages remain visible.
