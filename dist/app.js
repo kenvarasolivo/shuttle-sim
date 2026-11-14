@@ -67,7 +67,7 @@ function queueEstimate(kind,ids,t) {
   return `${eta}${values.length<ids.length?' + ?':''}`;
 }
 function renderQueues(t) {
-  $('queues').innerHTML=`<div class="queue-head"><span>Stop</span><span>Scheduled</span><span>Landlink</span></div>`+nodes.map((n,i)=>{
+  $('queues').innerHTML=`<div class="queue-head"><span>Stop</span><span>Scheduled</span><span>Dorflinie Bus</span></div>`+nodes.map((n,i)=>{
     const a=run.baseline.history[t].queues[i],b=run.shuttle.history[t].queues[i];
     return `<button class="queue-row ${selectedStop===i?'selected':''}" data-node="${i}" aria-pressed="${selectedStop===i}"><span><span class="station-letter">${n.short}</span>${i===0?'Main station':n.name}</span><span><strong>${a.length}</strong><small> / ${queueEstimate('baseline',a,t)}</small></span><span class="green-text"><strong>${b.length}</strong><small> / ${queueEstimate('shuttle',b,t)}</small></span></button>`;
   }).join('');
@@ -120,11 +120,11 @@ function renderHeadline(t,a,b,s){
   $('headline-difference').textContent=s.minutes===null?'—':Math.abs(s.minutes).toFixed(1);
   $('headline-delta').classList.toggle('negative',s.minutes!==null&&s.minutes<0);
   $('headline-delta').classList.toggle('neutral',s.minutes===null||s.minutes===0);
-  $('difference-label').textContent=s.minutes===null?'Journey-time difference':s.minutes<0?'Longer with Landlink':s.minutes===0?'No journey-time difference':'Time saved with Landlink';
+  $('difference-label').textContent=s.minutes===null?'Journey-time difference':s.minutes<0?'Longer with Dorflinie Bus':s.minutes===0?'No journey-time difference':'Time saved with Dorflinie Bus';
   $('headline-percent').textContent=s.percent===null?'Waiting for completed journeys':`${Math.abs(s.percent).toFixed(1)}% ${s.percent<0?'longer':s.percent>0?'shorter':'change'} than scheduled`;
   $('headline-state').textContent=t===config.duration?'Full-run results':`Live · ${clock(t)}`;
   $('headline-cohort').textContent=s.count?`Same ${s.count} passengers completed in both systems. The difference uses these two averages.`:'No passengers completed in both yet. Journey averages appear as trips finish.';
-  $('headline-context').textContent=`All passengers · completed: ${a.delivered} scheduled / ${b.delivered} Landlink · still waiting: ${a.waiting} / ${b.waiting} · riding: ${a.onboard} / ${b.onboard}.`;
+  $('headline-context').textContent=`All passengers · completed: ${a.delivered} scheduled / ${b.delivered} Dorflinie Bus · still waiting: ${a.waiting} / ${b.waiting} · riding: ${a.onboard} / ${b.onboard}.`;
   $('report-metadata').textContent=`08:00–${clock(t)} · ${config.cityCount} cities + Hbf · ${config.fleet} shuttles × ${config.capacity} seats · ${config.demand} passengers/hour · seed ${config.seed}`;
 }
 const resultRows=[
@@ -155,7 +155,7 @@ function renderResults(t){
   $('results-caption').textContent=`08:00–${clock(t)} · ${config.cityCount} cities + Hbf · ${a.arrived} identical passengers · seed ${config.seed}`;
   $('results-resources').textContent=`Resources differ: ${config.cityCount} scheduled lines versus ${config.fleet} shuttles. Demand is ${config.demand} passengers/hour across the whole network. This is a synthetic scenario, not proof of an equal-cost improvement.`;
   $('results-rows').innerHTML=resultRows.map(([key,label,unit,note])=>`<tr><th scope="row">${label}<span class="result-definition">${note}</span></th><td>${resultValue(a[key],unit)}</td><td>${resultValue(b[key],unit)}</td></tr>`).join('');
-  $('results-finding').textContent=saving.count?`For the same ${saving.count} passengers completed in both: Landlink ${saving.minutes>=0?'saved':'added'} ${Math.abs(saving.minutes).toFixed(1)} minutes per journey on average.`:'No passengers completed in both systems yet, so a matched journey saving cannot be calculated.';
+  $('results-finding').textContent=saving.count?`For the same ${saving.count} passengers completed in both: Dorflinie Bus ${saving.minutes>=0?'saved':'added'} ${Math.abs(saving.minutes).toFixed(1)} minutes per journey on average.`:'No passengers completed in both systems yet, so a matched journey saving cannot be calculated.';
 }
 function render(force=false){
   const t=Math.min(config.duration,Math.floor(time));
@@ -243,16 +243,16 @@ $('export').addEventListener('click',()=>{
     rows.push([config.seed,kind,p.id,nodes[p.origin].name,nodes[p.destination].name,p.arrival,p.deadline,p.pickup??'',p.dropoff??'',p.wait??(p.pickup===null?'':p.pickup-p.arrival),p.dropoff===null?'':p.dropoff-p.arrival,p.dropoff===null?'':p.dropoff<=p.deadline,completed]);
   }
   const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');
-  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`landlink-seed-${config.seed}-trips.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Exported full-run trips, including unfinished journeys.');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`dorflinie-bus-seed-${config.seed}-trips.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Exported full-run trips, including unfinished journeys.');
 });
 $('export-results').addEventListener('click',()=>{
   const a=resultStats(run.baseline,config.duration),b=resultStats(run.shuttle,config.duration);
   const pair=pairedSavings(run,config.duration);
-  const rows=[['Metric','Unit','Scheduled','Landlink','Definition'],...resultRows.map(([key,label,unit,note])=>[label,unit,a[key]??'',b[key]??'',note])];
-  rows.push(['Headline average total journey','min',pair.baselineAverage??'',pair.shuttleAverage??'','Same passengers completed in both systems'],['Headline time saved','min','',pair.minutes??'','Scheduled average minus Landlink average for the matched cohort'],['Headline reduction','percent','',pair.percent??'','Time saved divided by matched scheduled average'],['Matched completed passengers','people',pair.count,pair.count,'Headline comparison sample size']);
+  const rows=[['Metric','Unit','Scheduled','Dorflinie Bus','Definition'],...resultRows.map(([key,label,unit,note])=>[label,unit,a[key]??'',b[key]??'',note])];
+  rows.push(['Headline average total journey','min',pair.baselineAverage??'',pair.shuttleAverage??'','Same passengers completed in both systems'],['Headline time saved','min','',pair.minutes??'','Scheduled average minus Dorflinie Bus average for the matched cohort'],['Headline reduction','percent','',pair.percent??'','Time saved divided by matched scheduled average'],['Matched completed passengers','people',pair.count,pair.count,'Headline comparison sample size']);
   rows.push(['Passenger arrivals','people',a.arrived,b.arrived,'Same demand stream in both scenarios'],['Random seed','',config.seed,config.seed,'Reproduce using the same settings'],['Horizon','minutes',config.duration,config.duration,'Minutes since 08:00'],['Cities excluding Hbf','cities',config.cityCount,config.cityCount,'One scheduled line per city; chosen shuttle fleet stays fixed'],['Total demand','people/hour',config.demand,config.demand,'Across the whole network'],['Shuttle fleet','vehicles','',config.fleet,'Number of on-demand vehicles']);
   const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');
-  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`landlink-seed-${config.seed}-results.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`dorflinie-bus-seed-${config.seed}-results.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 let tripWasPlaying=false;
 $('add-trip').addEventListener('click',()=>{tripWasPlaying=playing;playing=false;playState();const arrival=Math.min(config.duration-1,Math.ceil(time));$('trip-form').elements.arrival.value=clock(arrival);$('trip-form').elements.deadline.value=clock(arrival+40);$('trip-error').textContent='';$('trip-dialog').showModal();});

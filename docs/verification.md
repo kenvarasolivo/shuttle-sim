@@ -1,4 +1,6 @@
-# Verification — Landlink
+# Verification — Dorflinie Bus
+
+The current product name is Dorflinie Bus. The interface, browser title, report labels, CSV headers/filenames, package and launch message use the new name. The model explanation explicitly scopes this simulation to buses and distinguishes the separate Dorflinie Car service. Historical validation notes below retain the name used when those checks were recorded.
 
 ## Simplified UI, ten shuttles and report headline
 

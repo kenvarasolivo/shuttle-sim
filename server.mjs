@@ -12,4 +12,4 @@ http.createServer(async(req,res)=>{
     if(!target.startsWith(root+path.sep)) {res.writeHead(403).end();return;}
     const data=await readFile(target);res.writeHead(200,{'Content-Type':mime[path.extname(target)]||'application/octet-stream','Cache-Control':'no-store'}).end(data);
   } catch {res.writeHead(404).end('Not found');}
-}).listen(port,'127.0.0.1',()=>console.log(`Landlink running at http://localhost:${port}`));
+}).listen(port,'127.0.0.1',()=>console.log(`Dorflinie Bus running at http://localhost:${port}`));

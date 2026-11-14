@@ -1,10 +1,12 @@
-# Landlink — Rural mobility lab
+# Dorflinie Bus — Rural mobility lab
+
+This project simulates **Dorflinie Bus** only. Dorflinie Car is a separate service and is outside this model.
 
 ## Simple controls and report screenshots
 
 The main controls are cities (3–10 plus Hbf), shuttles (0–10), and total passengers/hour. Use **Run simulation** to apply them. Arrival pattern, bus interval, seats, flexibility, horizon and random seed are under **More settings**. Existing map filters, manual trips, exports and smooth playback remain available.
 
-**Average total journey** is the first result on screen. It compares the same passengers who completed in both systems: scheduled average, Landlink average, absolute difference in minutes and percentage relative to the scheduled average. Green indicates a reduction; red indicates a longer journey with Landlink. Missing matched trips show dashes, and all-passenger completion/backlog counts stay beside the headline so it is not a whole-population claim.
+**Average total journey** is the first result on screen. It compares the same passengers who completed in both systems: scheduled average, Dorflinie Bus average, absolute difference in minutes and percentage relative to the scheduled average. Green indicates a reduction; red indicates a longer journey with Dorflinie Bus. Missing matched trips show dashes, and all-passenger completion/backlog counts stay beside the headline so it is not a whole-population claim.
 
 Select **Report view** for screenshots. It pauses at the full horizon and hides controls, maps, passenger lists and transient notifications, while retaining the large figures, cohort size, seed, network/fleet/demand settings, unfinished counts, assumptions and detailed result table. **Back to simulation** restores the interactive screen at the end of the run. The detailed table's “Average total journey (all completed)” may differ from the headline because each system completed a different group; this is labeled explicitly. Summary CSV export includes the four headline/cohort rows.
 
