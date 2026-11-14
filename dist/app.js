@@ -55,7 +55,7 @@ function renderMap(kind,t) {
   vehicleMarkers[kind]=s.vehicles.map((vehicle,i)=>({vehicle,element:elements[i],transform:elements[i].getAttribute('transform')}));
 }
 function metrics(kind,s) {
-  $(kind+'-metrics').innerHTML=[['Waiting now',s.waiting,'people','Across all stops'],['Avg. journey',s.averageJourney,'min',`${s.delivered} completed trips`],['On time',s.onTime,'%',s.delivered?'Of completed trips':'No completed trips yet']].map(([label,value,unit,sub])=>`<div><span class="metric-label">${label}</span><span class="metric-value">${number(value)} <small>${unit}</small></span><span class="metric-sub">${sub}</span></div>`).join('');
+  $(kind+'-metrics').innerHTML=[['Waiting now',s.waiting,'people','Across all stops'],['Avg. wait',s.averageWait,'min',`${s.delivered} completed trips`],['On time',s.onTime,'%',s.delivered?'Of completed trips':'No completed trips yet']].map(([label,value,unit,sub])=>`<div><span class="metric-label">${label}</span><span class="metric-value">${number(value)} <small>${unit}</small></span><span class="metric-sub">${sub}</span></div>`).join('');
   $(kind+'-delivered').textContent=`${s.delivered} at destination · ${s.onboard} riding`;
 }
 function queueEstimate(kind,ids,t) {
@@ -113,10 +113,24 @@ function renderPassengers(t){
   $('passenger-caption').textContent=selectedStop===null?'Live estimates for the same people in both scenarios.':`Passengers departing ${nodes[selectedStop].name}.`;
 }
 let lastRendered=-1;
+function renderHeadline(t,a,b,s){
+  const fixed=v=>v===null?'—':v.toFixed(1);
+  $('headline-baseline').textContent=fixed(s.baselineAverage);
+  $('headline-shuttle').textContent=fixed(s.shuttleAverage);
+  $('headline-difference').textContent=s.minutes===null?'—':Math.abs(s.minutes).toFixed(1);
+  $('headline-delta').classList.toggle('negative',s.minutes!==null&&s.minutes<0);
+  $('headline-delta').classList.toggle('neutral',s.minutes===null||s.minutes===0);
+  $('difference-label').textContent=s.minutes===null?'Journey-time difference':s.minutes<0?'Longer with Landlink':s.minutes===0?'No journey-time difference':'Time saved with Landlink';
+  $('headline-percent').textContent=s.percent===null?'Waiting for completed journeys':`${Math.abs(s.percent).toFixed(1)}% ${s.percent<0?'longer':s.percent>0?'shorter':'change'} than scheduled`;
+  $('headline-state').textContent=t===config.duration?'Full-run results':`Live · ${clock(t)}`;
+  $('headline-cohort').textContent=s.count?`Same ${s.count} passengers completed in both systems. The difference uses these two averages.`:'No passengers completed in both yet. Journey averages appear as trips finish.';
+  $('headline-context').textContent=`All passengers · completed: ${a.delivered} scheduled / ${b.delivered} Landlink · still waiting: ${a.waiting} / ${b.waiting} · riding: ${a.onboard} / ${b.onboard}.`;
+  $('report-metadata').textContent=`08:00–${clock(t)} · ${config.cityCount} cities + Hbf · ${config.fleet} shuttles × ${config.capacity} seats · ${config.demand} passengers/hour · seed ${config.seed}`;
+}
 const resultRows=[
   ['averageWait','Average waiting time','min','Before boarding + any transfer wait. Completed journeys.'],
   ['averageInVehicle','Average onboard time','min','Time aboard vehicles, including shuttle stop time. Completed journeys.'],
-  ['averageJourney','Average total journey','min','From reaching the origin stop to reaching the destination. Completed journeys.'],
+  ['averageJourney','Average total journey (all completed)','min','From reaching the origin stop to reaching the destination. All completed journeys in each system; cohorts can differ from the headline.'],
   ['p90Wait','90th-percentile wait','min','90% of completed journeys waited this long or less.'],
   ['averagePassengersPerLeg','Average passengers per ride leg','riders','Mean onboard count when leaving a stop. Includes empty legs.'],
   ['seatUtilization','Seat utilization while driving','%','Passenger-minutes divided by available seat-minutes.'],
@@ -150,7 +164,7 @@ function render(force=false){
   $('clock').textContent=clock(t);$('elapsed').textContent=`${t} of ${config.duration} min`;
   lastRendered=t;
   const a=summarize(run.baseline,t),b=summarize(run.shuttle,t),saving=pairedSavings(run,t);
-  metrics('baseline',a);metrics('shuttle',b);renderMap('baseline',t);renderMap('shuttle',t);renderQueues(t);renderTrend(t);renderPassengers(t);renderResults(t);
+  metrics('baseline',a);metrics('shuttle',b);renderHeadline(t,a,b,saving);renderMap('baseline',t);renderMap('shuttle',t);renderQueues(t);renderTrend(t);renderPassengers(t);renderResults(t);
   $('arrival-count').textContent=a.arrived;
   $('finding').textContent=saving.count?`${Math.abs(saving.minutes).toFixed(1)} min ${saving.minutes>=0?'saved':'longer'} per shared completed journey`:'Waiting for the first shared trips to finish.';
   $('paired-note').textContent=saving.count?`Saving based on ${saving.count} identical passengers completed in both scenarios.`:'Journey savings compare only passengers who finished in both scenarios.';
@@ -158,6 +172,7 @@ function render(force=false){
 function playState(){ $('play').innerHTML=playing?'<span aria-hidden="true">Ⅱ</span> Pause':'<span aria-hidden="true">▶</span> Play';$('play').setAttribute('aria-label',playing?'Pause simulation':'Play simulation'); }
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3000);}
 function build(start=0){
+  document.body.classList.remove('report-mode');$('report-mode').textContent='Report view ↗';$('report-mode').setAttribute('aria-pressed','false');
   const demand=[...generateDemand(config),...manualTrips].sort((a,b)=>a.arrival-b.arrival).map((p,i)=>({...p,id:i+1}));
   run=simulate(config,demand);nodes=run.config.network.nodes;time=start;lastRendered=-1;page=0;
   const tripForm=$('trip-form');
@@ -167,6 +182,7 @@ function build(start=0){
     tripForm.elements[key].value=String(previous<nodes.length?previous:key==='origin'?0:1);
   }
   updateCityPreview();
+  updateFleetPreview();
   $('network-scope').textContent=`${config.cityCount} cities + Hbf · ${config.demand} passengers/h total · ${config.fleet} shuttles`;
   $('network-comparison').textContent=`Scheduled adds one line per city. Shuttle fleet stays fixed. Increase total demand separately to test growth.`;
   $('queue-hint').textContent=`${nodes.length>4?'Scroll for all '+nodes.length+' stops. ':''}Click a stop to inspect passengers. ETA includes wait + ride.`;
@@ -179,7 +195,12 @@ function build(start=0){
 }
 $('play').addEventListener('click',()=>{if(time>=config.duration)time=0;playing=!playing;playState();render(true);});
 $('restart').addEventListener('click',()=>{time=0;page=0;render(true);});
-$('run-to-end').addEventListener('click',()=>{time=config.duration;playing=false;playState();render(true);$('final-results').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});$('results-title').focus({preventScroll:true});});
+$('run-to-end').addEventListener('click',()=>{time=config.duration;playing=false;playState();render(true);$('journey-highlight').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});});
+$('report-mode').addEventListener('click',()=>{
+  const enter=!document.body.classList.contains('report-mode');
+  if(enter){time=config.duration;playing=false;playState();render(true);}
+  document.body.classList.toggle('report-mode',enter);$('report-mode').setAttribute('aria-pressed',String(enter));$('report-mode').textContent=enter?'Back to simulation':'Report view ↗';window.scrollTo({top:0,behavior:'instant'});
+});
 $('timeline').addEventListener('input',e=>{time=Number(e.target.value);playing=false;playState();render(true);});
 $('speed').addEventListener('change',()=>{last=0;});
 function updateCityPreview(){
@@ -192,6 +213,9 @@ for(const [id,delta] of [['add-city',1],['remove-city',-1]])$(id).addEventListen
   $('city-count').dispatchEvent(new Event('input',{bubbles:true}));
 });
 $('city-count').addEventListener('input',updateCityPreview);
+function updateFleetPreview(){const n=Number($('fleet-count').value),valid=Number.isInteger(n)&&n>=0&&n<=10;$('add-shuttle').disabled=!valid||n>=10;$('remove-shuttle').disabled=!valid||n<=0;}
+for(const [id,delta] of [['add-shuttle',1],['remove-shuttle',-1]])$(id).addEventListener('click',()=>{$('fleet-count').value=Math.max(0,Math.min(10,Number($('fleet-count').value)+delta));$('fleet-count').dispatchEvent(new Event('input',{bubbles:true}));});
+$('fleet-count').addEventListener('input',updateFleetPreview);
 $('settings').addEventListener('input',e=>{for(const [key,unit] of [['demand',''],['headway',' min'],['slack',' min']])if(e.target.name===key)$(key+'-value').textContent=e.target.value+unit;$('settings-status').textContent='Changes pending. Apply to restart both scenarios.';});
 $('settings').addEventListener('submit',e=>{
   e.preventDefault();const data=new FormData(e.target),next={...config};
@@ -200,7 +224,7 @@ $('settings').addEventListener('submit',e=>{
 });
 $('new-seed').addEventListener('click',()=>{document.querySelector('[name=seed]').value=Math.floor(Math.random()*999999)+1;$('settings-status').textContent='New seed chosen. Apply to run this demand stream.';});
 $('restore').addEventListener('click',()=>{config={...defaults};manualTrips=[];$('settings').reset();for(const [k,u]of [['demand',''],['headway',' min'],['slack',' min']])$(k+'-value').textContent=defaults[k]+u;selectedStop=null;playing=true;build();$('settings-status').textContent='Both scenarios use identical arrivals.';});
-$('mobile-settings').addEventListener('click',()=>{const open=document.querySelector('.sidebar').classList.toggle('expanded');$('mobile-settings').setAttribute('aria-expanded',open);$('mobile-settings').textContent=open?'Fewer settings ↑':'More settings ↓';});
+$('mobile-settings').addEventListener('click',()=>{const open=$('advanced-settings').hidden;$('advanced-settings').hidden=!open;$('mobile-settings').setAttribute('aria-expanded',String(open));$('mobile-settings').textContent=open?'Fewer settings ↑':'More settings ↓';});
 function chooseStop(e){const el=e.target.closest('[data-node]');if(!el)return;const node=Number(el.dataset.node);selectedStop=selectedStop===node?null:node;page=0;render(true);}
 for(const id of ['baseline-map','shuttle-map','queues']) {$(id).addEventListener('click',chooseStop);$(id).addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseStop(e);}});}
 $('clear-stop').addEventListener('click',()=>{selectedStop=null;page=0;render(true);});
@@ -223,7 +247,9 @@ $('export').addEventListener('click',()=>{
 });
 $('export-results').addEventListener('click',()=>{
   const a=resultStats(run.baseline,config.duration),b=resultStats(run.shuttle,config.duration);
+  const pair=pairedSavings(run,config.duration);
   const rows=[['Metric','Unit','Scheduled','Landlink','Definition'],...resultRows.map(([key,label,unit,note])=>[label,unit,a[key]??'',b[key]??'',note])];
+  rows.push(['Headline average total journey','min',pair.baselineAverage??'',pair.shuttleAverage??'','Same passengers completed in both systems'],['Headline time saved','min','',pair.minutes??'','Scheduled average minus Landlink average for the matched cohort'],['Headline reduction','percent','',pair.percent??'','Time saved divided by matched scheduled average'],['Matched completed passengers','people',pair.count,pair.count,'Headline comparison sample size']);
   rows.push(['Passenger arrivals','people',a.arrived,b.arrived,'Same demand stream in both scenarios'],['Random seed','',config.seed,config.seed,'Reproduce using the same settings'],['Horizon','minutes',config.duration,config.duration,'Minutes since 08:00'],['Cities excluding Hbf','cities',config.cityCount,config.cityCount,'One scheduled line per city; chosen shuttle fleet stays fixed'],['Total demand','people/hour',config.demand,config.demand,'Across the whole network'],['Shuttle fleet','vehicles','',config.fleet,'Number of on-demand vehicles']);
   const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`landlink-seed-${config.seed}-results.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

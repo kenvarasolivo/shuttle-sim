@@ -1,8 +1,16 @@
 # Landlink — Rural mobility lab
 
+## Simple controls and report screenshots
+
+The main controls are cities (3–10 plus Hbf), shuttles (0–10), and total passengers/hour. Use **Run simulation** to apply them. Arrival pattern, bus interval, seats, flexibility, horizon and random seed are under **More settings**. Existing map filters, manual trips, exports and smooth playback remain available.
+
+**Average total journey** is the first result on screen. It compares the same passengers who completed in both systems: scheduled average, Landlink average, absolute difference in minutes and percentage relative to the scheduled average. Green indicates a reduction; red indicates a longer journey with Landlink. Missing matched trips show dashes, and all-passenger completion/backlog counts stay beside the headline so it is not a whole-population claim.
+
+Select **Report view** for screenshots. It pauses at the full horizon and hides controls, maps, passenger lists and transient notifications, while retaining the large figures, cohort size, seed, network/fleet/demand settings, unfinished counts, assumptions and detailed result table. **Back to simulation** restores the interactive screen at the end of the run. The detailed table's “Average total journey (all completed)” may differ from the headline because each system completed a different group; this is labeled explicitly. Summary CSV export includes the four headline/cohort rows.
+
 A browser-local interactive simulation comparing scheduled buses with deadline-aware, demand-responsive rural shuttles. Synthetic Hbf, City A, City B and City C receive identical random passenger streams in both scenarios. There is no affiliation with FlixBus or Amazon.
 
-The network can now grow from **3 to 10 cities plus Hbf**. Select **+ Add city** or enter a count, then **Apply & restart**. City D through City J automatically join the maps, queues, trip booking, routing, timetables, passenger list and exports. The minus button reduces the network, with a minimum of three cities. Changing settings clears manually added journeys.
+The network can now grow from **3 to 10 cities plus Hbf**. Select **+ Add city** or enter a count, then **Run simulation**. City D through City J automatically join the maps, queues, trip booking, routing, timetables, passenger list and exports. The minus button reduces the network, with a minimum of three cities. Changing settings clears manually added journeys.
 
 Total passenger demand and shuttle fleet size stay unchanged when you add cities. To test coverage, hold those fixed; to test growth, increase passengers/hour separately and try several random seeds. The scheduled model adds one radial line for each city, so its resource count grows; the dashboard and final overview state this explicitly. Real viability still requires calibrated geography, operating costs and measured demand.
 
@@ -23,7 +31,7 @@ Open http://localhost:5173. `PORT` overrides the local server port. Deployment u
 
 - The opening preview begins at 08:45. Restart returns to 08:00. Pause, scrub, and choose 1×, 3× or 10× playback.
 - Vehicles move continuously along the map's road curves between minute snapshots. Only marker transforms update each animation frame; routing, boarding and passenger statistics keep their one-minute simulation steps. Pause and scrubbing preserve exact positions. Reduced-motion mode keeps positions on minute snapshots.
-- Change demand, train waves, timetable frequency, fleet size, seats, flexibility, horizon or random seed, then select **Apply & restart**. Applying or resetting clears manually added journeys.
+- Change demand, train waves, timetable frequency, fleet size, seats, flexibility, horizon or random seed, then select **Run simulation**. Applying or resetting clears manually added journeys.
 - On smaller screens, **More settings** reveals all scenario controls.
 - **Test a journey** adds a passenger with a chosen origin, destination, stop-arrival time and arrival deadline to both systems. Playback pauses at that passenger's arrival. Stop selection filters origins, not destinations.
 - Click a map stop or queue row to filter the passenger list. The list also supports active, completed and at-risk trips and pagination.
