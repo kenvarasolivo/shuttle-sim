@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateDemand, simulate, defaults, summarize, planRequest, travelTime } from '../dist/simulation.js';
+import { generateDemand, simulate, defaults, summarize, planRequest, travelTime, resultStats } from '../dist/simulation.js';
 
 test('seeded arrivals are repeatable and include all four origins and feasible deadlines', () => {
   const a = generateDemand({...defaults, demand: 120});
@@ -90,4 +90,35 @@ test('a repeated run has identical routing, and metrics exclude unfinished trips
   const delivered = a.shuttle.passengers.filter(p => p.dropoff !== null && p.dropoff <= 90);
   assert.equal(s.delivered, delivered.length);
   assert.equal(s.averageJourney, delivered.length ? delivered.reduce((n,p) => n+p.dropoff-p.arrival,0)/delivered.length : null);
+});
+
+test('final results split waiting, onboard time and total journey, including transfers', () => {
+  const r=simulate({...defaults,duration:120},[{id:1,arrival:0,origin:1,destination:2,deadline:100}]);
+  for(const kind of ['baseline','shuttle']) {
+    const s=resultStats(r[kind],120);
+    assert.equal(s.delivered,1);
+    assert.equal(s.averageWait+s.averageInVehicle,s.averageJourney);
+    assert.equal(s.arrived,s.delivered+s.waiting+s.onboard);
+  }
+});
+
+test('ride load counts departures once, includes empty legs, and ignores future timetable legs', () => {
+  const snapshots=[
+    {time:0,arrived:0,waiting:0,onboard:0,delivered:0,vehicles:[{id:'bus',from:0,to:1,load:2,capacity:8,moving:{start:0,end:2}}]},
+    {time:1,arrived:0,waiting:0,onboard:0,delivered:0,vehicles:[{id:'bus',from:0,to:1,load:2,capacity:8,moving:{start:0,end:2}}]},
+    {time:2,arrived:0,waiting:0,onboard:0,delivered:0,vehicles:[{id:'bus',from:1,to:0,load:0,capacity:8,moving:{start:3,end:5}}]},
+    {time:3,arrived:0,waiting:0,onboard:0,delivered:0,vehicles:[{id:'bus',from:1,to:0,load:0,capacity:8,moving:{start:3,end:5}}]}
+  ];
+  const system={history:snapshots,passengers:[]};
+  const before=resultStats(system,2);
+  assert.equal(before.rideLegs,1);assert.equal(before.averagePassengersPerLeg,2);assert.equal(before.seatUtilization,25);
+  const after=resultStats(system,3);
+  assert.equal(after.rideLegs,2);assert.equal(after.averagePassengersPerLeg,1);assert.equal(after.emptyLegShare,50);
+});
+
+test('unfinished riders do not vanish from final results and empty averages stay null', () => {
+  const r=simulate({...defaults,fleet:0,duration:60});
+  const s=resultStats(r.shuttle,60);
+  assert.equal(s.waiting,r.demand.length);assert.equal(s.averageWait,null);assert.equal(s.averageInVehicle,null);
+  assert.equal(s.averagePassengersPerLeg,null);assert.equal(s.seatUtilization,null);assert.equal(s.rideLegs,0);
 });
