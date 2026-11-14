@@ -1,5 +1,13 @@
 # Verification — Landlink
 
+## Expandable city network
+
+The new `network.test.mjs` first failed because `createNetwork` did not exist; checkpoint `bfbb62d` preserves this RED state. After implementation, **17/17 engine tests pass**, with **98.60% line coverage and 99.58% branch coverage**. The additional tests cover deterministic 3/4/7/10-city networks, positive symmetric roads, unchanged original distances and stable existing roads while adding cities, valid travel times, demand at all eleven stops, capacity/passenger conservation, added-city-to-added-city delivery, invalid stop rejection, and independent runs without shared mutable network state. Total arrival count is unchanged by city count when seed and demand are fixed.
+
+The network browser check passes 12 checks plus mobile and shrink assertions: Add city, ten-city maps and queues, eleven booking stops, fixed fleet/total demand, booking City J to City D, updated final results and resource explanation, exports with new city names, maximum/minimum limits, and returning to the original network. There were no JavaScript exceptions or page overflow at 390px. All 23 existing browser checks also pass. The summary export now has 20 lines including metadata for city count, demand and shuttle fleet.
+
+Desktop and phone screenshots of the ten-city network were reviewed. Stops fit in two rows around Hbf, and expanded queue lists scroll to avoid stretching the adjacent chart. Default-network design inspection passes at 1440/768/390px with no failures or warnings. The framed-sheet visual direction is retained. Adding cities is an experiment using synthetic distances and uniform village selection, not a validation against a real rural transport network.
+
 ## Smooth vehicle animation
 
 The browser reproducer `.taste-skill/motion-check.mjs` first failed with “Vehicle does not move between minute snapshots.” The clock already advanced on animation frames, but the render function returned before updating vehicle positions between integer minutes. Markers now interpolate from departure to arrival along the same quadratic curve used by the road, with cached SVG references and transform updates only. A stable per-vehicle lane offset removes the previous sideways jump between parked and moving positions. The timeline now accepts fractional minutes.

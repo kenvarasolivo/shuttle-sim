@@ -2,6 +2,12 @@
 
 A browser-local interactive simulation comparing scheduled buses with deadline-aware, demand-responsive rural shuttles. Synthetic Hbf, City A, City B and City C receive identical random passenger streams in both scenarios. There is no affiliation with FlixBus or Amazon.
 
+The network can now grow from **3 to 10 cities plus Hbf**. Select **+ Add city** or enter a count, then **Apply & restart**. City D through City J automatically join the maps, queues, trip booking, routing, timetables, passenger list and exports. The minus button reduces the network, with a minimum of three cities. Changing settings clears manually added journeys.
+
+Total passenger demand and shuttle fleet size stay unchanged when you add cities. To test coverage, hold those fixed; to test growth, increase passengers/hour separately and try several random seeds. The scheduled model adds one radial line for each city, so its resource count grows; the dashboard and final overview state this explicitly. Real viability still requires calibrated geography, operating costs and measured demand.
+
+Existing road distances remain stable as the network grows. Hbf distances for added cities are deterministic synthetic values (`6 + (cityIndex × 7) mod 15` km); their inter-city distances use those radial distances and fixed angular slots. Original A/B/C roads remain unchanged. Added stops are arranged in two rows on the schematic for readability; their map positions do not determine road kilometres. Each scheduled line starts at `(cityIndex - 1) × floor(headway / cityCount)` minutes after 08:00. All overlapping scheduled runs are represented, including for long roads with short headways.
+
 ## Run
 
 Node 22+; no packages or network services required after downloading the source:

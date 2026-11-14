@@ -23,7 +23,7 @@ export function createNetwork(cityCount=3){
   const roads=stops.map((_,a)=>stops.map((__,b)=>{
     if(a<4&&b<4)return distances[a][b];
     if(a===b)return 0;if(a===0)return radii[b];if(b===0)return radii[a];
-    const angle=2*Math.PI*Math.abs(a-b)/cityCount;
+    const angle=2*Math.PI*Math.abs(a-b)/10;
     return Math.max(1,Math.round(Math.sqrt(radii[a]**2+radii[b]**2-2*radii[a]*radii[b]*Math.cos(angle))*10)/10);
   }));
   return {nodes:stops,distances:roads};

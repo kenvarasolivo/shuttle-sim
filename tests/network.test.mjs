@@ -14,6 +14,8 @@ test('expanded networks are deterministic, complete and preserve original road d
     }
   }
   assert.deepEqual(createNetwork(3).nodes,nodes);
+  const smaller=createNetwork(6),bigger=createNetwork(10);
+  for(let a=0;a<=6;a++)for(let b=0;b<=6;b++)assert.equal(smaller.distances[a][b],bigger.distances[a][b]);
   for(const count of [2,11,3.5,NaN])assert.throws(()=>createNetwork(count));
 });
 
