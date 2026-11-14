@@ -6,22 +6,43 @@ export const nodes = [
   {name:'City C',short:'C',x:440,y:450}
 ];
 export const distances = [[0,8,12,10],[8,0,7,14],[12,7,0,8],[10,14,8,0]];
-export const defaults = {seed:42,demand:24,duration:180,fleet:3,capacity:8,headway:60,busCapacity:30,speed:35,slack:25,pattern:'steady'};
-export const travelTime = (a,b,speed) => a===b ? 0 : Math.max(1,Math.ceil(distances[a][b]/speed*60));
+export const defaults = {seed:42,demand:24,duration:180,fleet:3,capacity:8,headway:60,busCapacity:30,speed:35,slack:25,pattern:'steady',cityCount:3};
+export function createNetwork(cityCount=3){
+  if(!Number.isInteger(cityCount)||cityCount<3||cityCount>10)throw new Error('Choose 3 to 10 cities');
+  const stops=nodes.map(n=>({...n}));
+  for(let i=4;i<=cityCount;i++)stops.push({name:`City ${String.fromCharCode(64+i)}`,short:String.fromCharCode(64+i)});
+  if(cityCount>3){
+    stops[0]={...stops[0],x:400,y:265};
+    const top=Math.ceil(cityCount/2),bottom=cityCount-top;
+    for(let i=1;i<=cityCount;i++){
+      const upper=i<=top,count=upper?top:bottom,index=upper?i-1:i-top-1;
+      stops[i]={...stops[i],x:count===1?400:90+index*620/(count-1),y:upper?130:405};
+    }
+  }
+  const radii=Array.from({length:cityCount+1},(_,i)=>i<4?distances[0][i]:6+(i*7)%15);
+  const roads=stops.map((_,a)=>stops.map((__,b)=>{
+    if(a<4&&b<4)return distances[a][b];
+    if(a===b)return 0;if(a===0)return radii[b];if(b===0)return radii[a];
+    const angle=2*Math.PI*Math.abs(a-b)/cityCount;
+    return Math.max(1,Math.round(Math.sqrt(radii[a]**2+radii[b]**2-2*radii[a]*radii[b]*Math.cos(angle))*10)/10);
+  }));
+  return {nodes:stops,distances:roads};
+}
+export const travelTime = (a,b,speed,network=null) => a===b ? 0 : Math.max(1,Math.ceil((network?.distances??distances)[a][b]/speed*60));
 const mean = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : null;
 function random(seed) { let s=seed>>>0; return () => { s+=0x6D2B79F5; let t=Math.imul(s^s>>>15,1|s); t^=t+Math.imul(t^t>>>7,61|t); return ((t^t>>>14)>>>0)/4294967296; }; }
 export function generateDemand(options={}) {
-  const c={...defaults,...options},r=random(c.seed),out=[];
+  const c={...defaults,...options},r=random(c.seed),out=[],network=c.network??createNetwork(c.cityCount),cityCount=network.nodes.length-1;
   for(let t=0;t<c.duration;t++) {
     // Poisson counts per minute. Rush periods model train-arrival waves without changing either cohort.
     const factor=c.pattern==='waves' ? (t%30<5 ? 3.4 : 0.52) : 1;
     const lambda=c.demand/60*factor,limit=Math.exp(-lambda); let product=1,k=0;
     do { product*=r(); k++; } while(product>limit);
     for(let j=0;j<k-1;j++) {
-      const origin=r()<0.6 ? 0 : 1+Math.floor(r()*3);
-      let destination=origin===0 ? 1+Math.floor(r()*3) : (r()<0.72 ? 0 : 1+Math.floor(r()*3));
-      if(destination===origin) destination=origin%3+1;
-      out.push({id:out.length+1,arrival:t,origin,destination,deadline:t+travelTime(origin,destination,c.speed)+c.slack+Math.floor(r()*11)});
+      const origin=r()<0.6 ? 0 : 1+Math.floor(r()*cityCount);
+      let destination=origin===0 ? 1+Math.floor(r()*cityCount) : (r()<0.72 ? 0 : 1+Math.floor(r()*cityCount));
+      if(destination===origin) destination=origin%cityCount+1;
+      out.push({id:out.length+1,arrival:t,origin,destination,deadline:t+travelTime(origin,destination,c.speed,network)+c.slack+Math.floor(r()*11)});
     }
   }
   return out;
@@ -32,7 +53,7 @@ function routeEstimate(v,route,time,c,people) {
   for(let i=0;i<route.length;i++) {
     const s=route[i];
     if(i===0 && v.moving) t=v.moving.end;
-    else t+=travelTime(node,s.node,c.speed);
+    else t+=travelTime(node,s.node,c.speed,c.network);
     const p=people.get(s.pid),e=etas.get(s.pid)||{};
     if(s.kind==='pickup') { load++; e.pickup=t; }
     else { load--; e.dropoff=t; cost+=Math.max(0,t-p.deadline)*20+(t-p.arrival)*0.25; }
@@ -61,8 +82,8 @@ export function planRequest(v,p,time,c,people) {
 function baseline(demand,c) {
   const reserved=new Map();
   function book(origin,destination,earliest) {
-    const village=origin||destination,ride=travelTime(0,village,c.speed);
-    const offset=(village-1)*Math.floor(c.headway/3)+(origin===0?0:ride+1);
+    const village=origin||destination,ride=travelTime(0,village,c.speed,c.network);
+    const offset=(village-1)*Math.floor(c.headway/c.cityCount)+(origin===0?0:ride+1);
     let departure=offset+Math.max(0,Math.ceil((earliest-offset)/c.headway))*c.headway;
     let key=`${origin}-${destination}-${departure}`;
     while((reserved.get(key)||0)>=c.busCapacity) {departure+=c.headway;key=`${origin}-${destination}-${departure}`;}
@@ -77,7 +98,7 @@ function baseline(demand,c) {
   });
   const history=[];
   for(let t=0;t<=c.duration;t++) {
-    const queues=[[],[],[],[]]; let arrived=0,waiting=0,onboard=0,delivered=0,late=0;
+    const queues=Array.from({length:c.network.nodes.length},()=>[]); let arrived=0,waiting=0,onboard=0,delivered=0,late=0;
     const estimates={};
     for(const p of passengers) {
       if(p.arrival>t) continue;
@@ -87,10 +108,10 @@ function baseline(demand,c) {
       else {waiting++;const leg=p.legs.find(l=>l.start>t);queues[leg.origin].push(p.id);}
     }
     const vehicles=[];
-    for(let city=1;city<=3;city++) {
-      const ride=travelTime(0,city,c.speed),offset=(city-1)*Math.floor(c.headway/3);
+    for(let city=1;city<=c.cityCount;city++) {
+      const ride=travelTime(0,city,c.speed,c.network),offset=(city-1)*Math.floor(c.headway/c.cityCount);
       const cycle=Math.floor((t-offset)/c.headway);
-      for(let n=Math.max(0,cycle-1);n<=cycle;n++) {
+      for(let n=Math.max(0,Math.floor((t-offset-(2*ride+1))/c.headway)+1);n<=cycle;n++) {
         const start=offset+n*c.headway,dt=t-start;
         if(dt>=0 && dt<2*ride+1) {
           const outbound=dt<ride,from=outbound?0:city,to=outbound?city:0;
@@ -127,9 +148,9 @@ function shuttles(demand,c) {
       if(v.moving||v.ready>t||!v.route.length) continue;
       const to=v.route[0].node;
       if(to===v.node) serve(v,t);
-      else {v.moving={from:v.node,to,start:t,end:t+travelTime(v.node,to,c.speed)};v.km+=distances[v.node][to];}
+      else {v.moving={from:v.node,to,start:t,end:t+travelTime(v.node,to,c.speed,c.network)};v.km+=c.network.distances[v.node][to];}
     }
-    const queues=[[],[],[],[]],estimates={};let arrived=0,waiting=0,onboard=0,delivered=0,late=0;
+    const queues=Array.from({length:c.network.nodes.length},()=>[]),estimates={};let arrived=0,waiting=0,onboard=0,delivered=0,late=0;
     for(const v of vehicles) {
       const e=routeEstimate(v,v.route,t,c,people);
       if(e) for(const [id,eta] of e.etas) estimates[id]=eta;
@@ -150,7 +171,9 @@ export function simulate(options={},customDemand=null) {
   for(const key of ['duration','demand','fleet','capacity','headway','busCapacity','speed','slack','seed']) if(!Number.isFinite(c[key])) throw new Error(`${key} must be finite`);
   if(c.duration<1||c.duration>360||c.demand<0||c.demand>240||c.fleet<0||c.fleet>8||c.capacity<1||c.headway<1||c.busCapacity<1||c.speed<1||c.slack<0) throw new Error('Configuration outside supported range');
   for(const key of ['duration','fleet','capacity','busCapacity']) if(!Number.isInteger(c[key])) throw new Error(`${key} must be an integer`);
+  c.network=createNetwork(c.cityCount);
   const demand=customDemand?customDemand.map(p=>({...p})):generateDemand(c);
+  for(const p of demand)if(!Number.isInteger(p.origin)||!Number.isInteger(p.destination)||p.origin<0||p.destination<0||p.origin>c.cityCount||p.destination>c.cityCount||p.origin===p.destination)throw new Error('Passenger stop is outside the active city network');
   return {config:c,demand,baseline:baseline(demand,c),shuttle:shuttles(demand,c)};
 }
 export function summarize(system,time) {
