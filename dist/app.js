@@ -1,4 +1,4 @@
-import {nodes,defaults,simulate,summarize,pairedSavings,generateDemand,travelTime} from './simulation.js';
+import {nodes,defaults,simulate,summarize,pairedSavings,generateDemand,travelTime,resultStats} from './simulation.js';
 const $=id=>document.getElementById(id);
 let config={...defaults},run,time=45,playing=true,last=0,selectedStop=null,page=0,toastTimer,manualTrips=[];
 const pageSize=6;
@@ -97,13 +97,42 @@ function renderPassengers(t){
   $('passenger-caption').textContent=selectedStop===null?'Live estimates for the same people in both scenarios.':`Passengers departing ${nodes[selectedStop].name}.`;
 }
 let lastRendered=-1;
+const resultRows=[
+  ['averageWait','Average waiting time','min','Before boarding + any transfer wait. Completed journeys.'],
+  ['averageInVehicle','Average onboard time','min','Time aboard vehicles, including shuttle stop time. Completed journeys.'],
+  ['averageJourney','Average total journey','min','From reaching the origin stop to reaching the destination. Completed journeys.'],
+  ['p90Wait','90th-percentile wait','min','90% of completed journeys waited this long or less.'],
+  ['averagePassengersPerLeg','Average passengers per ride leg','riders','Mean onboard count when leaving a stop. Includes empty legs.'],
+  ['seatUtilization','Seat utilization while driving','%','Passenger-minutes divided by available seat-minutes.'],
+  ['rideLegs','Vehicle departures','legs','One leg = travel from one stop to the next; includes empty and in-progress legs.'],
+  ['emptyLegShare','Empty departures','%','Share of departed ride legs with no passengers aboard.'],
+  ['onTime','Arrived by their deadline','%','Among completed journeys only.'],
+  ['delivered','Completed journeys','people','Reached their final destination inside the simulation window.'],
+  ['waiting','Still waiting at the end','people','Includes people waiting to transfer at Hbf.'],
+  ['onboard','Still riding at the end','people','Boarded, but have not yet reached their destination.'],
+  ['peakQueue','Largest waiting queue','people','Peak combined number waiting across all four stops.']
+];
+function resultValue(value,unit){return value===null||value===undefined?'—':`${['people','legs'].includes(unit)?Math.round(value):value.toFixed(1)} <span class="minor">${unit}</span>`;}
+function renderResults(t){
+  const finished=t===config.duration;
+  $('final-results').hidden=!finished;
+  $('run-to-end').textContent=finished?'View results':'Run to end';
+  const hourly=config.headway;
+  $('baseline-dispatch').textContent=`Leaves Hbf every ${hourly} min per village, even when empty. First departures: A ${clock(0)}, B ${clock(Math.floor(hourly/3))}, C ${clock(2*Math.floor(hourly/3))}.`;
+  $('shuttle-dispatch').textContent='Dispatches when a request is assigned. No timetable or minimum load; one minute at each pickup/dropoff, then it continues. Idle shuttles wait where they finish.';
+  if(!finished)return;
+  const a=resultStats(run.baseline,t),b=resultStats(run.shuttle,t),saving=pairedSavings(run,t);
+  $('results-caption').textContent=`08:00–${clock(t)} · ${a.arrived} identical passengers · seed ${config.seed}`;
+  $('results-rows').innerHTML=resultRows.map(([key,label,unit,note])=>`<tr><th scope="row">${label}<span class="result-definition">${note}</span></th><td>${resultValue(a[key],unit)}</td><td>${resultValue(b[key],unit)}</td></tr>`).join('');
+  $('results-finding').textContent=saving.count?`For the same ${saving.count} passengers completed in both: Landlink ${saving.minutes>=0?'saved':'added'} ${Math.abs(saving.minutes).toFixed(1)} minutes per journey on average.`:'No passengers completed in both systems yet, so a matched journey saving cannot be calculated.';
+}
 function render(force=false){
   const t=Math.min(config.duration,Math.floor(time));
   $('clock').textContent=clock(t);$('elapsed').textContent=`${t} of ${config.duration} min`;$('timeline').value=time;
   if(!force&&t===lastRendered)return;
   lastRendered=t;
   const a=summarize(run.baseline,t),b=summarize(run.shuttle,t),saving=pairedSavings(run,t);
-  metrics('baseline',a);metrics('shuttle',b);renderMap('baseline',t);renderMap('shuttle',t);renderQueues(t);renderTrend(t);renderPassengers(t);
+  metrics('baseline',a);metrics('shuttle',b);renderMap('baseline',t);renderMap('shuttle',t);renderQueues(t);renderTrend(t);renderPassengers(t);renderResults(t);
   $('arrival-count').textContent=a.arrived;
   $('finding').textContent=saving.count?`${Math.abs(saving.minutes).toFixed(1)} min ${saving.minutes>=0?'saved':'longer'} per shared completed journey`:'Waiting for the first shared trips to finish.';
   $('paired-note').textContent=saving.count?`Saving based on ${saving.count} identical passengers completed in both scenarios.`:'Journey savings compare only passengers who finished in both scenarios.';
@@ -120,6 +149,7 @@ function build(start=0){
 }
 $('play').addEventListener('click',()=>{if(time>=config.duration)time=0;playing=!playing;playState();render(true);});
 $('restart').addEventListener('click',()=>{time=0;page=0;render(true);});
+$('run-to-end').addEventListener('click',()=>{time=config.duration;playing=false;playState();render(true);$('final-results').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});$('results-title').focus({preventScroll:true});});
 $('timeline').addEventListener('input',e=>{time=Number(e.target.value);playing=false;playState();render(true);});
 $('speed').addEventListener('change',()=>{last=0;});
 $('settings').addEventListener('input',e=>{for(const [key,unit] of [['demand',''],['headway',' min'],['slack',' min']])if(e.target.name===key)$(key+'-value').textContent=e.target.value+unit;$('settings-status').textContent='Changes pending. Apply to restart both scenarios.';});
@@ -150,6 +180,13 @@ $('export').addEventListener('click',()=>{
   }
   const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`landlink-seed-${config.seed}-trips.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Exported full-run trips, including unfinished journeys.');
+});
+$('export-results').addEventListener('click',()=>{
+  const a=resultStats(run.baseline,config.duration),b=resultStats(run.shuttle,config.duration);
+  const rows=[['Metric','Unit','Scheduled','Landlink','Definition'],...resultRows.map(([key,label,unit,note])=>[label,unit,a[key]??'',b[key]??'',note])];
+  rows.push(['Passenger arrivals','people',a.arrived,b.arrived,'Same demand stream in both scenarios'],['Random seed','',config.seed,config.seed,'Reproduce using the same settings'],['Horizon','minutes',config.duration,config.duration,'Minutes since 08:00']);
+  const csv=rows.map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`landlink-seed-${config.seed}-results.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 let tripWasPlaying=false;
 $('add-trip').addEventListener('click',()=>{tripWasPlaying=playing;playing=false;playState();const arrival=Math.min(config.duration-1,Math.ceil(time));$('trip-form').elements.arrival.value=clock(arrival);$('trip-form').elements.deadline.value=clock(arrival+40);$('trip-error').textContent='';$('trip-dialog').showModal();});

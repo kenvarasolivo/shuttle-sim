@@ -163,3 +163,29 @@ export function pairedSavings(run,time) {
   const pairs=run.demand.map((p,i)=>[run.baseline.passengers[i],run.shuttle.passengers[i]]).filter(([a,b])=>a.dropoff!==null&&b.dropoff!==null&&a.dropoff<=time&&b.dropoff<=time);
   return {count:pairs.length,minutes:mean(pairs.map(([a,b])=>(a.dropoff-a.arrival)-(b.dropoff-b.arrival)))};
 }
+// A ride leg is one actual vehicle departure between two different stops.
+// Count empty legs too; a multi-stop shuttle tour consists of several legs.
+export function resultStats(system,time) {
+  const end=Math.max(0,Math.min(system.history.length-1,Math.floor(time)));
+  const summary=summarize(system,end);
+  const completed=system.passengers.filter(p=>p.dropoff!==null&&p.dropoff<=end&&p.arrival<=end);
+  const averageInVehicle=mean(completed.map(p=>p.legs?p.legs.reduce((sum,l)=>sum+l.end-l.start,0):p.dropoff-p.pickup));
+  const legs=new Map();let passengerMinutes=0,seatMinutes=0;
+  for(const snapshot of system.history.slice(0,end+1)) for(const v of snapshot.vehicles) {
+    const m=v.moving;
+    if(!m||m.start>snapshot.time||m.end<=snapshot.time||v.from===v.to)continue;
+    const key=`${v.id}/${m.start}/${v.from}/${v.to}`;
+    if(!legs.has(key))legs.set(key,{load:v.load,capacity:v.capacity});
+    // Integrate [minute, minute+1), clipped to the observation window.
+    const dt=Math.max(0,Math.min(snapshot.time+1,m.end,end)-Math.max(snapshot.time,m.start));
+    passengerMinutes+=v.load*dt;seatMinutes+=v.capacity*dt;
+  }
+  const departures=[...legs.values()];
+  const sortedWait=completed.map(p=>p.wait??p.pickup-p.arrival).sort((a,b)=>a-b);
+  return {...summary,averageInVehicle,rideLegs:departures.length,
+    averagePassengersPerLeg:mean(departures.map(v=>v.load)),
+    emptyLegShare:departures.length?departures.filter(v=>v.load===0).length/departures.length*100:null,
+    seatUtilization:seatMinutes?passengerMinutes/seatMinutes*100:null,
+    p90Wait:sortedWait.length?sortedWait[Math.ceil(sortedWait.length*.9)-1]:null,
+    peakQueue:Math.max(...system.history.slice(0,end+1).map(s=>s.waiting))};
+}

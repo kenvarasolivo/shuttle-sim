@@ -42,17 +42,26 @@
       <div class="scrubber"><input id="timeline" aria-label="Simulation time" type="range" min="0" max="180" value="0"><div class="timeline-labels"><span>08:00</span><span id="end-time">11:00</span></div></div>
       <label class="speed-label">Speed<select id="speed" aria-label="Playback speed"><option value="1">1×</option><option selected value="3">3×</option><option value="10">10×</option></select></label>
       <button class="icon-button" id="restart" aria-label="Restart playback" title="Restart playback">↻</button>
+      <button class="export" id="run-to-end">Run to end</button>
     </section>
     <div class="run-summary"><span><i class="live-dot"></i><strong id="arrival-count">0</strong> passengers arrived <span class="summary-divider">·</span> <span id="scenario-name">Everyday demand</span></span><span id="finding">Waiting for the first shared trips to finish.</span></div>
+    <section class="panel final-results" id="final-results" aria-labelledby="results-title" hidden>
+      <div class="panel-heading"><div><h2 id="results-title" tabindex="-1">Simulation complete</h2><p id="results-caption"></p></div><button class="export" id="export-results">Download summary</button></div>
+      <p class="results-finding" id="results-finding"></p>
+      <div class="table-scroll"><table class="results-table"><thead><tr><th>Result</th><th>Scheduled transport</th><th>Landlink shuttle</th></tr></thead><tbody id="results-rows"></tbody></table></div>
+      <div class="results-notes"><p><strong>Reading the averages:</strong> waiting, onboard and total journey averages include completed passengers in each system; those groups can differ. Check the waiting and riding counts too. The saving above compares the same completed passengers.</p><p><strong>What is a ride?</strong> Here it is one vehicle leg between two stops, not a passenger booking or a whole multi-stop tour. Average load includes empty repositioning and scheduled empty trips. Seat utilization is weighted by actual driving time.</p><p>Resources differ: three scheduled lines versus the selected shuttle fleet. This is a synthetic scenario, not proof of an equal-cost improvement.</p></div>
+    </section>
     <div class="comparison">
       <section class="scenario baseline" aria-labelledby="baseline-title">
         <div class="scenario-heading"><div><span class="scenario-kicker">The usual connection</span><h2 id="baseline-title">Scheduled transport</h2></div><span class="system-type">Fixed routes</span></div>
+        <p class="dispatch-note" id="baseline-dispatch"></p>
         <div class="metric-strip" id="baseline-metrics"></div>
         <div class="map-wrap"><svg id="baseline-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="Scheduled bus map showing Hbf, City A, City B, City C, queues and moving buses"></svg><span class="map-note">Schematic network · not to geographic scale</span></div>
         <div class="scenario-footer"><span><i class="legend-bus baseline-dot"></i> Scheduled bus · 30 seats</span><span id="baseline-delivered">0 arrived at destination</span></div>
       </section>
       <section class="scenario shuttle" aria-labelledby="shuttle-title">
         <div class="scenario-heading"><div><span class="scenario-kicker">A connection that adapts</span><h2 id="shuttle-title"><span class="landlink-word">Landlink</span> shuttle</h2></div><span class="system-type green-type">On demand</span></div>
+        <p class="dispatch-note" id="shuttle-dispatch"></p>
         <div class="metric-strip" id="shuttle-metrics"></div>
         <div class="map-wrap"><svg id="shuttle-map" class="network-map" viewBox="0 0 800 550" role="img" aria-label="On-demand shuttle map showing queues, planned routes and moving vehicles"></svg><span class="map-note">Dashed routes = planned stops · numbers = riders</span></div>
         <div class="scenario-footer"><span><i class="legend-bus shuttle-dot"></i> <span id="fleet-label">3 shuttles · 8 seats each</span></span><span id="shuttle-delivered">0 arrived at destination</span></div>
